@@ -5,7 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // DOM referansları
   const sentenceGameSection = document.getElementById("gameSection")
   const sentenceLevelSelect = document.getElementById("levelSelect")
-  const sentenceGameOver = document.getElementById("gameOver")
+  // Birden fazla 'gameOver' id'li div var, ilkini seçmek için:
+  const sentenceGameOver = document.querySelectorAll("#gameOver")[0]
   const sentenceScoreSpan = document.getElementById("score")
   const sentenceQuestionNumSpan = document.getElementById("questionNum")
   const sentenceTimeSpan = document.getElementById("time")
@@ -13,7 +14,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const sentenceChoicesDiv = document.getElementById("choices")
   const sentenceFeedbackDiv = document.getElementById("feedback")
   const sentenceFinalScore = document.getElementById("finalScore")
-  const sentencePlayAgain = document.getElementById("playAgain")
+  // Birden fazla 'playAgain' id'li buton olabilir, ilkini seçmek için:
+  const sentencePlayAgain = document.querySelectorAll("#playAgain")[0]
   const startSentenceGameBtn = document.getElementById("startGame")
   
   console.log("DOM Elements found:")
@@ -168,14 +170,27 @@ document.addEventListener("DOMContentLoaded", () => {
     sentenceGameOver.style.display = "none"
     nextSentenceQuestion()
     // Zamanlayıcı başlat
-    sentenceGameState.time = 0
-    sentenceTimeSpan.textContent = sentenceGameState.time
+    // Timer mantığını VocabBlitz ile aynı yap
+    sentenceGameState.maxTime = getTimeForLevel(level) * sentenceGameState.questions.length;
+    sentenceGameState.time = sentenceGameState.maxTime;
+    sentenceTimeSpan.textContent = sentenceGameState.time;
+    if (sentenceGameState.timer) clearInterval(sentenceGameState.timer);
     sentenceGameState.timer = setInterval(() => {
-      sentenceGameState.time++
-      sentenceTimeSpan.textContent = sentenceGameState.time
-    }, 1000)
+      sentenceGameState.time--;
+      sentenceTimeSpan.textContent = sentenceGameState.time;
+      // Progress bar güncelle
+      const progressFill = document.getElementById('progressFill');
+      if (progressFill) {
+        const progress = (sentenceGameState.maxTime - sentenceGameState.time) / sentenceGameState.maxTime * 100;
+        progressFill.style.width = `${progress}%`;
+      }
+      if (sentenceGameState.time <= 0) {
+        clearInterval(sentenceGameState.timer);
+        endSentenceGame(true); // timeout ile bitiş
+      }
+    }, 1000);
   }
-
+  
   function getTimeForLevel(level) {
     if (level === "A2") return 10
     if (level === "B1") return 7
@@ -258,44 +273,46 @@ document.addEventListener("DOMContentLoaded", () => {
       sentenceFeedbackDiv.textContent = `Yanlış! Doğru cevap: ${qObj.a}`
       sentenceFeedbackDiv.style.color = "#d32f2f"
     }
-    sentenceGameState.userAnswers.push({ q: qObj, user: choice, correct })
+    sentenceGameState.userAnswers.push({ q: qObj, user: choice, correct });
     setTimeout(() => {
-      sentenceGameState.current++
-      nextSentenceQuestion()
-    }, 900)
+      sentenceGameState.current++;
+      nextSentenceQuestion();
+    }, 1000);
   }
 
-  function endSentenceGame() {
-    clearInterval(sentenceGameState.timer)
-    sentenceGameSection.style.display = "none"
-    sentenceGameOver.style.display = "flex"
-    const accuracy = Math.round((sentenceGameState.correct / sentenceGameState.questions.length) * 100)
-    sentenceFinalScore.innerHTML = `Doğru: <b>${sentenceGameState.correct}</b> / Yanlış: <b>${sentenceGameState.wrong}</b><br>Skor: <b>${sentenceGameState.score}</b><br>Doğruluk: <b>${accuracy}%</b>`
-    // Yanlış cevap özetini göster
-    const summaryDiv = document.getElementById("wrongSummary")
-    if (summaryDiv) {
-      const wrongs = sentenceGameState.userAnswers.filter((ans) => !ans.correct)
-      if (wrongs.length === 0) {
-        summaryDiv.innerHTML = "<h3>Tebrikler! Tüm sorular doğru 🎉</h3>"
-      } else {
-        let html = "<h3>Yanlış Yaptığın Sorular</h3><ul>"
-        wrongs.forEach((ans, i) => {
-          const qText = ans.q.q
-          const userAnswer = ans.user ?? "Cevap verilmedi"
-          const correctAnswer = ans.q.a
-          html += `
-            <li style="margin-bottom:1em;">
-              <div><strong>Soru ${i + 1}:</strong> ${qText}</div>
-              <div><span style="color:#d32f2f;">Senin cevabın:</span> ${userAnswer}</div>
-              <div><span style="color:#388e3c;">Doğru cevap:</span> ${correctAnswer}</div>
-            </li>`
-        })
-        html += "</ul>"
-        summaryDiv.innerHTML = html
-      }
-    }
+// Yanlış yapılan soruların özetini gösteren fonksiyon
+function showWrongSummary() {
+  const summaryDiv = document.getElementById("wrongSummary");
+  const wrongs = sentenceGameState.userAnswers.filter(ans => !ans.correct);
+  if (wrongs.length === 0) {
+    summaryDiv.innerHTML = "<div>Tüm soruları doğru yaptınız!</div>";
+    return;
   }
+  let html = "<h3>Yanlış Yaptığın Sorular</h3><ul>";
+  wrongs.forEach((ans, i) => {
+    const qText = ans.q.q;
+    const userAnswer = ans.user ?? "Cevap verilmedi";
+    const correctAnswer = ans.q.a;
+    html += `
+      <li style='margin-bottom:1em;'>
+        <div><strong>Soru ${i + 1}:</strong> ${qText}</div>
+        <div><span style='color:#d32f2f;'>Senin cevabın:</span> ${userAnswer}</div>
+        <div><span style='color:#388e3c;'>Doğru cevap:</span> ${correctAnswer}</div>
+      </li>`;
+  });
+  html += "</ul>";
+  summaryDiv.innerHTML = html;
+}
 
+// Oyun bittiğinde yanlış özetini göster
+function endSentenceGame(timeout = false) {
+  sentenceGameSection.style.display = "none";
+  sentenceGameOver.style.display = "flex";
+  sentenceFinalScore.textContent = `Skorun: ${sentenceGameState.score}`;
+  document.getElementById("correctCount").textContent = sentenceGameState.correct;
+  document.getElementById("wrongCount").textContent = sentenceGameState.wrong;
+  showWrongSummary();
+}
   // Level selection from radio buttons
   function getLevelFromRadio() {
     if (document.getElementById("level-beginner").checked) return "A2"
@@ -320,7 +337,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // Reset game and show level selection
       sentenceLevelSelect.style.display = "flex"
       sentenceGameSection.style.display = "none"
-      sentenceGameOver.style.display = "none"
+      // Tüm gameOver divlerini gizle
+      document.querySelectorAll("#gameOver").forEach(div => div.style.display = "none")
     }
   }
-})
+});
