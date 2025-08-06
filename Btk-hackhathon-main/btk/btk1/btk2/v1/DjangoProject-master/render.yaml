@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: btk-hackhaton-django
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn DjangoProject.wsgi:application --bind 0.0.0.0:10000"
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: False
+      - key: GEMINI_API_KEY
+        sync: false
+    autoDeploy: true
+    
+    # Render uses port 10000 by default for web services
+    
+    # Static files are handled by WhiteNoise
+    
+    # If you need a database, add a PostgreSQL service from the Render dashboard
