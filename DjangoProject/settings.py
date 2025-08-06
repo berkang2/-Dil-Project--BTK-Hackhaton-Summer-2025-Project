@@ -32,6 +32,15 @@ if 'RAILWAY_ENVIRONMENT' in os.environ:
     ALLOWED_HOSTS = ['*']
     DEBUG = False
 
+# Render specific settings
+if 'RENDER_ENVIRONMENT' in os.environ:
+    ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
+    DEBUG = False
+    # Render external hostname
+    if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
+        ALLOWED_HOSTS.append(os.environ['RENDER_EXTERNAL_HOSTNAME'])
+    CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com']
+
 
 # Application definition
 
